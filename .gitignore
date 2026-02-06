@@ -1,0 +1,24 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+env/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Mac
+.DS_Store
+
+# Project Data (Large files)
+stock_app/data/market_data/*.csv
+!stock_app/data/market_data/stock_list.csv
+
+# Logs
+*.log
