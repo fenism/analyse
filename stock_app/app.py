@@ -199,6 +199,23 @@ if st.session_state['theme'] == 'dark':
     div[data-testid="stMarkdownContainer"] p {
         color: #FFFFFF !important;
     }
+    
+    /* Buttons */
+    button {
+        background-color: #262730 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #4b4b4b !important;
+    }
+    button p {
+        color: #FFFFFF !important;
+    }
+    button:hover {
+        border-color: #ff4b4b !important;
+        color: #ff4b4b !important;
+    }
+    button:hover p {
+        color: #ff4b4b !important;
+    }
     </style>
     """, unsafe_allow_html=True)
     plotly_template = 'plotly_dark'
