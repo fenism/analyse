@@ -49,6 +49,96 @@ with st.sidebar.expander("📊 数据状态 (Data Status)", expanded=True):
         
     if st.button("🔄 刷新下载进度"):
         st.rerun()
+        
+    st.markdown("---")
+    if st.button("📥 立即下载行情数据 (Download)", help="从腾讯财经下载日线数据到本地"):
+        import concurrent.futures
+        import requests
+        import json
+        
+        # Define download logic inline or import if path allows
+        # To ensure stability, let's use a simplified inline version or call the script function if adjusted.
+        # Let's use a robust inline version adapted for Streamlit.
+        
+        status_container = st.status("正在初始化下载任务...", expanded=True)
+        
+        # 1. Check Stock List
+        if not os.path.exists(list_path):
+            status_container.write("正在获取全市场股票列表...")
+            try:
+                import akshare as ak
+                stock_df = ak.stock_zh_a_spot_em()
+                stock_df = stock_df[['代码', '名称']]
+                stock_df.columns = ['code', 'name']
+                stock_df.to_csv(list_path, index=False)
+                status_container.write(f"已创建股票列表: {len(stock_df)} 只")
+            except Exception as e:
+                status_container.error(f"获取股票列表失败: {e}")
+                st.stop()
+        else:
+            stock_df = pd.read_csv(list_path, dtype={'code': str})
+            
+        # 2. Download Loop
+        stocks = stock_df.to_dict('records')
+        total_d = len(stocks)
+        params_list = []
+        
+        # Prepare params
+        for s in stocks:
+             code = s['code']
+             if code.startswith('6'): symbol = f"sh{code}"
+             elif code.startswith('0') or code.startswith('3'): symbol = f"sz{code}"
+             else: symbol = f"sz{code}" # fallback
+             params_list.append((code, symbol))
+             
+        status_container.write("正在并发下载数据 (Tencent API)...")
+        progress_bar = status_container.progress(0)
+        
+        def download_one(args):
+            c, sym = args
+            url = f"http://web.ifzq.gtimg.cn/appstock/app/fqkline/get?_var=kline_dayqfq&param={sym},day,,,600,qfq"
+            try:
+                r = requests.get(url, timeout=2)
+                if r.status_code != 200: return False
+                content = r.text
+                if "=" in content: json_str = content.split("=", 1)[1]
+                else: json_str = content
+                data = json.loads(json_str)
+                k_data = data.get('data', {}).get(sym, {})
+                klines = k_data.get('qfqday', []) or k_data.get('day', [])
+                if not klines: return False
+                
+                # Save
+                cols = ['date', 'open', 'close', 'high', 'low', 'volume']
+                recs = []
+                for k in klines:
+                    if len(k) < 6: continue
+                    recs.append({
+                        'date': k[0], 
+                        'open': k[1], 'close': k[2], 
+                        'high': k[3], 'low': k[4], 'volume': k[5]
+                    })
+                if recs:
+                    original_data_path = "stock_app/data/market_data"
+                    if not os.path.exists(original_data_path): os.makedirs(original_data_path)
+                    pd.DataFrame(recs).to_csv(os.path.join(original_data_path, f"{c}.csv"), index=False)
+                    return True
+            except:
+                return False
+            return False
+
+        # Run ThreadPool
+        done_count = 0
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            futures = [executor.submit(download_one, p) for p in params_list]
+            for f in concurrent.futures.as_completed(futures):
+                done_count += 1
+                if done_count % 50 == 0:
+                    progress_bar.progress(done_count / total_d)
+                    
+        status_container.update(label="下载完成!", state="complete", expanded=False)
+        st.success(f"下载任务结束。请刷新页面查看数据状态。")
+        st.rerun()
 
 # --- Theme Toggle ---
 if 'theme' not in st.session_state:
