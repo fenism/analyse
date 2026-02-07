@@ -95,9 +95,46 @@ class Strategies:
         # Simplified: Price > EMA200 AND Price > EMA15 AND Price > MA20
         signals['Signal_HPS'] = (df['close'] > df['EMA200']) & (df['close'] > df['EMA15'])
         
-        # 11. TKOS (Monthly Momentum)
-        # Ret_20 > 30% (Proxy for month > 50%)
-        signals['Signal_TKOS'] = df['Ret_20'] > 0.30
+        # 11. TKOS (Monthly Momentum - Stock King)
+        # Logic: Previous Month Return > 50%
+        # 1. Resample to Monthly Close
+        try:
+            # Ensure we have datetime index for resampling
+            if 'date' in df.columns:
+                df_temp = df.set_index('date')
+            else:
+                df_temp = df.copy() # Assume index is already date?
+            
+            # Resample 'ME' (Month End) or 'M'
+            monthly_close = df_temp['close'].resample('M').last()
+            
+            # 2. Calculate Monthly Return (Close to Close)
+            monthly_ret = monthly_close.pct_change()
+            
+            # 3. Check if Last Month > 50%
+            # We want the signal for 'Target Month' to be True if 'Target Month - 1' return > 0.5
+            # However, resample('M') yields the last day of the month.
+            # Using ffill on daily data:
+            # - On Feb 1st, ffill finds Jan 31st value. Jan 31st value is Jan Return. -> Correct (Prev Month).
+            # - On Jan 31st, ffill finds Jan 31st value. Jan 31st value is Jan Return. -> Current Month (So far).
+            # This is acceptable and better than shift(1) which would give Dec Return for all Feb.
+            
+            tkos_monthly_sig = (monthly_ret > 0.50)
+            
+            # 4. Broadcast back to Daily
+            # ffill will propagate the month-end signal to all subsequent days until next month end
+            tkos_daily = tkos_monthly_sig.reindex(df_temp.index, method='ffill')
+            
+            # Fill NaNs (first month)
+            tkos_daily = tkos_daily.fillna(False)
+            
+            # Assign, ensuring alignment
+            signals['Signal_TKOS'] = tkos_daily.values
+            
+        except Exception as e:
+            # Fallback if resampling fails
+            # print(f"TKOS Error: {e}")
+            signals['Signal_TKOS'] = False
         
         # 12. Wyckoff Accumulation (Simplified)
         # Volume < MA20 for 70% of last 60 days.
