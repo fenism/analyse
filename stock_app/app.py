@@ -241,14 +241,29 @@ else:
         color: #000000;
     }
     
-    /* Sidebar */
+    /* Sidebar - Force Light Background and Black Text */
     section[data-testid="stSidebar"] {
-        background-color: #F0F2F6;
+        background-color: #F0F2F6 !important;
+        color: #000000 !important;
     }
     
-    /* Force Text Color */
+    /* Force Text Color Globally (including Sidebar) */
     .stApp p, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6, 
     .stApp label, .stApp span, .stApp div[data-testid="stMarkdownContainer"] {
+        color: #000000 !important;
+    }
+    
+    /* Force Text Color in Sidebar specifically (in case .stApp doesn't cover it) */
+    section[data-testid="stSidebar"] p, 
+    section[data-testid="stSidebar"] h1, 
+    section[data-testid="stSidebar"] h2, 
+    section[data-testid="stSidebar"] h3, 
+    section[data-testid="stSidebar"] h4, 
+    section[data-testid="stSidebar"] h5, 
+    section[data-testid="stSidebar"] h6, 
+    section[data-testid="stSidebar"] label, 
+    section[data-testid="stSidebar"] span, 
+    section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] {
         color: #000000 !important;
     }
     
@@ -280,15 +295,22 @@ else:
         color: #000000 !important;
     }
 
-    /* Buttons */
-    .stButton button {
+    /* Buttons (Global) */
+    button {
         background-color: #FFFFFF !important;
         color: #000000 !important;
         border: 1px solid #CCCCCC !important;
     }
-    .stButton button:hover {
+    button p {
+        color: #000000 !important;
+    }
+    button:hover {
         background-color: #E0E0E0 !important;
         border-color: #999999 !important;
+        color: #000000 !important;
+    }
+    button:hover p {
+        color: #000000 !important;
     }
 
     /* Expanders */
@@ -297,11 +319,14 @@ else:
         color: #000000 !important;
         border: 1px solid #E0E0E0 !important;
     }
-    div[data-testid="stExpander"] details summary span {
+    div[data-testid="stExpander"] details summary span,
+    div[data-testid="stExpander"] details summary svg {
         color: #000000 !important;
+        fill: #000000 !important;
     }
     div[data-testid="stExpander"] details {
         border-color: #E0E0E0 !important;
+        color: #000000 !important;
     }
 
     /* Progress Bar Text */
