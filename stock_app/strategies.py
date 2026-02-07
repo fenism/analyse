@@ -123,5 +123,15 @@ class Strategies:
         # Std20 < Std60 and Std20 < Std120
         signals['Signal_ES'] = (df['Std20'] < df['Std60']) & (df['Std20'] < df['Std120']) & (df['Ret_20'].abs() < 0.1) # Low movement
         
+        # 16. RKing Trend Follower
+        # Signal > 0 (Long State)
+        # Or specifically the crossover buy signal?
+        # User said: "Red/Yellow signal long".
+        # We use RKing_State which is 1 for Long, -1 for Short.
+        if 'RKing_State' in df.columns:
+            signals['Signal_RKing'] = df['RKing_State'] == 1
+        else:
+            signals['Signal_RKing'] = False
+            
         return signals
 

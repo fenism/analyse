@@ -67,8 +67,12 @@ class Indicators:
         
         # --- New Indicators for Expanded Strategies ---
         
+        # RKing
+        df = Indicators.add_rking(df)
+        
         # EMA for HPS / Trend
         df['EMA15'] = df['close'].ewm(span=15, adjust=False).mean()
+        df['EMA_High_15'] = df['high'].ewm(span=15, adjust=False).mean() # HPS Channel
         df['EMA200'] = df['close'].ewm(span=200, adjust=False).mean()
         
         # MACD Signal MA for HMC
@@ -85,6 +89,90 @@ class Indicators:
         df['Lower_Shadow'] = df[['open', 'close']].min(axis=1) - df['low']
         df['Range'] = df['high'] - df['low']
         
+        # --- Analysis Indicators ---
+        # KDJ (9,3,3)
+        df = Indicators.calculate_kdj(df)
+        
+        # Williams %R (14)
+        df = Indicators.calculate_wr(df)
+        
+        # CCI (14)
+        df = Indicators.calculate_cci(df)
+
+        return df
+
+    @staticmethod
+    def add_rking(df):
+        """
+        Calculate RKing Strategy Indicators.
+        Code:
+            XOPEN:=(REF(O,N)+REF(C,N))/2; (N=1)
+            XCLOSE:=CLOSE;
+            XHIGH:=MAX(HIGH,XOPEN);
+            XLOW:=MIN(LOW,XOPEN);
+            VOLALITY:=MA(XHIGH-XLOW,8);
+            UP:MA(XCLOSE,5)+VOLALITY/2;
+            DOWN:MA(XCLOSE,5)-VOLALITY/2;
+            BU:=CROSS(XCLOSE,UP);
+            SEL:=CROSS(DOWN,XCLOSE);
+        """
+        if df.empty: return df
+        
+        # 1. XOPEN = (Ref(O) + Ref(C)) / 2
+        df['Ref_Open'] = df['open'].shift(1)
+        df['Ref_Close'] = df['close'].shift(1)
+        # Handle first row NaN if needed, fill with Open/Close?
+        df['XOpen'] = (df['Ref_Open'] + df['Ref_Close']) / 2
+        
+        # 2. XClose = Close
+        df['XClose'] = df['close']
+        
+        # 3. XHigh/XLow
+        df['XHigh'] = df[['high', 'XOpen']].max(axis=1)
+        df['XLow'] = df[['low', 'XOpen']].min(axis=1)
+        
+        # 4. Volatility (MA 8 of Range)
+        df['RKing_Vol'] = (df['XHigh'] - df['XLow']).rolling(window=8).mean()
+        
+        # 5. Bands
+        ma5 = df['XClose'].rolling(window=5).mean()
+        df['RKing_Upper'] = ma5 + df['RKing_Vol'] / 2
+        df['RKing_Lower'] = ma5 - df['RKing_Vol'] / 2
+        
+        # 6. Signals (Vectorized Cross)
+        # BU: Cross(XClose, UP) => XClose > UP and PrevXClose <= PrevUP
+        prev_close = df['XClose'].shift(1)
+        prev_upper = df['RKing_Upper'].shift(1)
+        prev_lower = df['RKing_Lower'].shift(1)
+        
+        # BU condition: Close crossed above Upper
+        df['RKing_BU'] = (df['XClose'] > df['RKing_Upper']) & (prev_close <= prev_upper)
+        
+        # SEL condition: Lower crossed above Close (Close crossed below Lower)
+        # SEL:=CROSS(DOWN,XCLOSE) => Down > Close and PrevDown <= PrevClose
+        df['RKing_SEL'] = (df['RKing_Lower'] > df['XClose']) & (prev_lower <= prev_close)
+        
+        # 7. State Color (Simulation)
+        # Red/Yellow (Long) if recent signal is BU
+        # Blue/Green (Short) if recent signal is SEL
+        # We need a forward fill of the last signal type.
+        # 1 = Buy, -1 = Sell, 0 = No Change
+        
+        conditions = [
+            df['RKing_BU'],
+            df['RKing_SEL']
+        ]
+        choices = [1, -1]
+        
+        # Create signal series (NaN where no signal)
+        df['Signal_State'] = np.select(conditions, choices, default=np.nan)
+        
+        # Forward fill to propagate state
+        df['RKing_State'] = df['Signal_State'].ffill().fillna(0) # 0 = Neutral/Start
+        
+        # Cleanup temp cols if desired, or keep for debug
+        # df.drop(columns=['Ref_Open', 'Ref_Close', 'XOpen', ...], inplace=True)
+        
         return df
 
     @staticmethod
@@ -95,6 +183,32 @@ class Indicators:
         
         rs = gain / loss
         return 100 - (100 / (1 + rs))
+
+    @staticmethod
+    def calculate_kdj(df, n=9, m1=3, m2=3):
+        low_list = df['low'].rolling(window=n, min_periods=n).min()
+        high_list = df['high'].rolling(window=n, min_periods=n).max()
+        rsv = (df['close'] - low_list) / (high_list - low_list) * 100
+        df['K'] = rsv.ewm(com=m1-1, adjust=False).mean()
+        df['D'] = df['K'].ewm(com=m2-1, adjust=False).mean()
+        df['J'] = 3 * df['K'] - 2 * df['D']
+        return df
+
+    @staticmethod
+    def calculate_wr(df, n=14):
+        low_list = df['low'].rolling(window=n, min_periods=n).min()
+        high_list = df['high'].rolling(window=n, min_periods=n).max()
+        # Williams %R = (High_n - Close) / (High_n - Low_n) * -100
+        df['WR'] = (high_list - df['close']) / (high_list - low_list) * -100
+        return df
+
+    @staticmethod
+    def calculate_cci(df, n=14):
+        tp = (df['high'] + df['low'] + df['close']) / 3
+        ma = tp.rolling(window=n).mean()
+        md = tp.rolling(window=n).apply(lambda x: np.mean(np.abs(x - np.mean(x))))
+        df['CCI'] = (tp - ma) / (0.015 * md)
+        return df
 
 # Chip Distribution Approximation (HLP3)
 # To calculate "Profit Ratio" (Winner Ratio), we need a distribution model.

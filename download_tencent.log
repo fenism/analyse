@@ -1,0 +1,54 @@
+/Users/swag/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+>>> 启动腾讯财经数据下载 (Tencent API) <<<
+Loading stock list from: stock_app/data/market_data/stock_list.csv
+加载股票列表: 4719 只。
+Progress: 100/4719 | Speed: 33.6/s
+Progress: 200/4719 | Speed: 34.7/s
+Progress: 300/4719 | Speed: 35.1/s
+Progress: 400/4719 | Speed: 35.3/s
+Progress: 500/4719 | Speed: 35.4/s
+Progress: 600/4719 | Speed: 35.6/s
+Progress: 700/4719 | Speed: 35.8/s
+Progress: 800/4719 | Speed: 36.2/s
+Progress: 900/4719 | Speed: 36.1/s
+Progress: 1000/4719 | Speed: 36.3/s
+Progress: 1100/4719 | Speed: 36.5/s
+Progress: 1200/4719 | Speed: 36.5/s
+Progress: 1300/4719 | Speed: 36.4/s
+Progress: 1400/4719 | Speed: 36.5/s
+Progress: 1500/4719 | Speed: 36.5/s
+Progress: 1600/4719 | Speed: 36.5/s
+Progress: 1700/4719 | Speed: 36.5/s
+Progress: 1800/4719 | Speed: 36.5/s
+Progress: 1900/4719 | Speed: 36.6/s
+Progress: 2000/4719 | Speed: 36.6/s
+Progress: 2100/4719 | Speed: 36.5/s
+Progress: 2200/4719 | Speed: 36.6/s
+Progress: 2300/4719 | Speed: 36.5/s
+Progress: 2400/4719 | Speed: 36.5/s
+Progress: 2500/4719 | Speed: 36.4/s
+Progress: 2600/4719 | Speed: 36.4/s
+Progress: 2700/4719 | Speed: 36.3/s
+Progress: 2800/4719 | Speed: 36.3/s
+Progress: 2900/4719 | Speed: 36.3/s
+Progress: 3000/4719 | Speed: 36.4/s
+Progress: 3100/4719 | Speed: 36.4/s
+Progress: 3200/4719 | Speed: 36.5/s
+Progress: 3300/4719 | Speed: 36.5/s
+Progress: 3400/4719 | Speed: 36.4/s
+Progress: 3500/4719 | Speed: 36.4/s
+Progress: 3600/4719 | Speed: 36.3/s
+Progress: 3700/4719 | Speed: 36.3/s
+Progress: 3800/4719 | Speed: 36.3/s
+Progress: 3900/4719 | Speed: 36.3/s
+Progress: 4000/4719 | Speed: 36.3/s
+Progress: 4100/4719 | Speed: 36.3/s
+Progress: 4200/4719 | Speed: 36.3/s
+Progress: 4300/4719 | Speed: 36.3/s
+Progress: 4400/4719 | Speed: 36.3/s
+Progress: 4500/4719 | Speed: 36.3/s
+Progress: 4600/4719 | Speed: 36.3/s
+Progress: 4700/4719 | Speed: 36.2/s
+
+全部下载完成! 数据存储于: stock_app/data/market_data

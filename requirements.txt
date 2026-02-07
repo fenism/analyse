@@ -1,0 +1,11 @@
+streamlit
+pandas
+numpy
+plotly
+akshare
+google-generativeai
+scipy
+mn_feature
+xgboost
+scikit-learn
+requests

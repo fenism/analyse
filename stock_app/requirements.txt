@@ -1,7 +1,8 @@
-
-akshare
-pandas
-plotly
 streamlit
+pandas
 numpy
+plotly
+akshare
+ta-lib
+adata
 notebooklm-py

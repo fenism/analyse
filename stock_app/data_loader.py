@@ -21,36 +21,37 @@ class DataLoader:
         """
         Fetch K-line data from local CSV.
         """
+        # Ensure code is 6 digits string
+        code = str(code).zfill(6)
         file_path = os.path.join(self.data_dir, f"{code}.csv")
         
         if not os.path.exists(file_path):
+            print(f"[DataLoader] File not found: {file_path}")
             return pd.DataFrame()
 
         try:
             df = pd.read_csv(file_path)
             
-            # Ensure filtering by date
-            # Assuming format YYYY-MM-DD in file
-            # But akshare might save YYYY-MM-DD or YYYYMMDD depending on source?
-            # Akshare usually returns YYYY-MM-DD or datetime. 
-            # In download script I didn't change format. Let's check format.
-            # Usually string YYYY-MM-DD.
+            # Standardize dates
+            if 'date' not in df.columns:
+                print(f"[DataLoader] 'date' column missing in {file_path}")
+                return pd.DataFrame()
             
-            # Simple string comparison works for ISO dates
-            # Standardize input
-            s_date = str(start_date).replace("-", "")
-            e_date = str(end_date).replace("-", "")
-            
-            # Convert file date column to string YYYYMMDD for comparison if needed
-            # Or just convert to datetime
             df['date'] = pd.to_datetime(df['date'])
             
+            # Ensure start_date/end_date are pd.Timestamp
             start_dt = pd.to_datetime(start_date)
             end_dt = pd.to_datetime(end_date)
             
+            # Filter
             mask = (df['date'] >= start_dt) & (df['date'] <= end_dt)
-            return df.loc[mask].copy()
+            res = df.loc[mask].copy()
+            
+            if res.empty:
+                print(f"[DataLoader] Data empty after filtering. Range: {start_dt} - {end_dt}. File Range: {df['date'].min()} - {df['date'].max()}")
+                
+            return res
             
         except Exception as e:
-            print(f"Error reading {code}: {e}")
+            print(f"[DataLoader] Error reading {code}: {e}")
             return pd.DataFrame()
