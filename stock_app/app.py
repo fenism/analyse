@@ -157,11 +157,46 @@ if st.session_state['theme'] == 'dark':
     # Custom CSS for Dark Mode (Black Background)
     st.markdown("""
     <style>
+    /* Main Area */
     .stApp {
-        background-color: #000000;
+        background-color: #0e1117; 
         color: #FFFFFF;
     }
-    .stMarkdown, .stText, h1, h2, h3, h4, h5, h6, label, .stCheckbox {
+    
+    /* Sidebar - Force Dark Background */
+    section[data-testid="stSidebar"] {
+        background-color: #262730; 
+        color: #FFFFFF;
+    }
+    
+    /* Text Colors */
+    .stMarkdown, .stText, h1, h2, h3, h4, h5, h6, label, .stCheckbox, p {
+        color: #FFFFFF !important;
+    }
+    
+    /* Input Fields Background */
+    div[data-baseweb="input"] {
+        background-color: #262730 !important;
+        color: #FFFFFF !important;
+    }
+    input {
+        color: #FFFFFF !important;
+    }
+    
+    /* Selectbox/Dropdown options */
+    div[data-baseweb="select"] > div {
+        background-color: #262730 !important;
+        color: #FFFFFF !important;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        background-color: #262730 !important;
+        color: #FFFFFF !important;
+    }
+    
+    /* Progress Bar Text */
+    div[data-testid="stMarkdownContainer"] p {
         color: #FFFFFF !important;
     }
     </style>
