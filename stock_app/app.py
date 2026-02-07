@@ -579,7 +579,7 @@ if app_mode == "个股行情 (Analysis)":
                         st.error("未找到 API Key。请在 .streamlit/secrets.toml 中配置 GEMINI_API_KEY。")
                         st.stop()
                         
-                    from stock_app.stock_diagnosis import StockDiagnoser
+                    from stock_diagnosis import StockDiagnoser
                     diagnoser = StockDiagnoser(GEMINI_API_KEY)
                     
                     with st.spinner("正在请求 AI 模型进行深度分析... (可能需要30-60秒)"):
@@ -836,7 +836,7 @@ elif app_mode == "策略选股 (Screening)":
                         st.error("未找到 API Key。请在 .streamlit/secrets.toml 中配置 GEMINI_API_KEY。")
                         st.stop()
 
-                     from stock_app.stock_diagnosis import StockDiagnoser
+                     from stock_diagnosis import StockDiagnoser
                      diagnoser = StockDiagnoser(GEMINI_API_KEY)
                      with st.spinner("正在请求 AI 模型进行深度分析..."):
                          report = diagnoser.generate_report(df_s, code_s, name_s, sigs_s)
