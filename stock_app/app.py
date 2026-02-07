@@ -425,6 +425,11 @@ def plot_stock_chart(df_sel, code, name, show_ma, show_ema, show_boll, show_cyc,
         st.warning("No data to plot.")
         return
 
+    # Create a copy to avoid modifying original df
+    df_plot = df_sel.copy()
+    # Convert date to string for category axis (removes gaps)
+    df_plot['date'] = df_plot['date'].apply(lambda x: x.strftime('%Y-%m-%d') if isinstance(x, (datetime.datetime, datetime.date)) or isinstance(x, pd.Timestamp) else x)
+
     # Plotly
     # 2 rows: Main(0.7) + Sub(0.3)
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
@@ -436,120 +441,167 @@ def plot_stock_chart(df_sel, code, name, show_ma, show_ema, show_boll, show_cyc,
 
     # --- Main Chart ---
     # Candlestick
-    fig.add_trace(go.Candlestick(x=df_sel['date'],
-                    open=df_sel['open'], high=df_sel['high'],
-                    low=df_sel['low'], close=df_sel['close'],
+    fig.add_trace(go.Candlestick(x=df_plot['date'],
+                    open=df_plot['open'], high=df_plot['high'],
+                    low=df_plot['low'], close=df_plot['close'],
                     increasing_line_color='red', decreasing_line_color='green',
                     name='K线'), row=1, col=1)
     
     # Overlays
-    if show_ma and 'MA20' in df_sel.columns:
-        fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['MA20'], line=dict(color='orange', width=1), name='MA20'), row=1, col=1)
-    if show_ema and 'EMA200' in df_sel.columns:
-        fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['EMA200'], line=dict(color='purple', width=1.5), name='EMA200'), row=1, col=1)
-    if show_ema15 and 'EMA_High_15' in df_sel.columns:
-         fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['EMA_High_15'], line=dict(color='blue', width=1), name='HPS Channel (EMA15 High)'), row=1, col=1)
+    if show_ma and 'MA20' in df_plot.columns:
+        fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['MA20'], line=dict(color='orange', width=1), name='MA20'), row=1, col=1)
+    if show_ema and 'EMA200' in df_plot.columns:
+        fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['EMA200'], line=dict(color='purple', width=1.5), name='EMA200'), row=1, col=1)
+    if show_ema15 and 'EMA_High_15' in df_plot.columns:
+         fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['EMA_High_15'], line=dict(color='blue', width=1), name='HPS Channel (EMA15 High)'), row=1, col=1)
     
     if show_cyc:
-         if 'CYC_Inf' in df_sel.columns:
-             fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['CYC_Inf'], line=dict(color='brown', width=1.5), name='CYC无穷'), row=1, col=1)
-         if 'CYC_13' in df_sel.columns:
-             fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['CYC_13'], line=dict(color='cyan', width=1, dash='dot'), name='CYC短线'), row=1, col=1)
+         if 'CYC_Inf' in df_plot.columns:
+             fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['CYC_Inf'], line=dict(color='brown', width=1.5), name='CYC无穷'), row=1, col=1)
+         if 'CYC_13' in df_plot.columns:
+             fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['CYC_13'], line=dict(color='cyan', width=1, dash='dot'), name='CYC短线'), row=1, col=1)
              
-    if show_boll and 'Boll_Upper' in df_sel.columns:
-        fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['Boll_Upper'], line=dict(color='gray', width=1, dash='dot'), name='Boll Up'), row=1, col=1)
-        fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['Boll_Lower'], line=dict(color='gray', width=1, dash='dot'), name='Boll Low'), row=1, col=1)
+    if show_boll and 'Boll_Upper' in df_plot.columns:
+        fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['Boll_Upper'], line=dict(color='gray', width=1, dash='dot'), name='Boll Up'), row=1, col=1)
+        fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['Boll_Lower'], line=dict(color='gray', width=1, dash='dot'), name='Boll Low'), row=1, col=1)
         
     # Strategy Specific Overlays (Box Top, Support, etc)
-    if show_box and 'High_52' in df_sel.columns:
-        fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['High_52'], line=dict(color='green', width=1, dash='dash'), name='Box Top (250日)'), row=1, col=1)
-    if show_supt and 'Low_20' in df_sel.columns:
-        fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['Low_20'], line=dict(color='red', width=1, dash='dot'), name='Support (20日)'), row=1, col=1)
+    if show_box and 'High_52' in df_plot.columns:
+        fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['High_52'], line=dict(color='green', width=1, dash='dash'), name='Box Top (250日)'), row=1, col=1)
+    if show_supt and 'Low_20' in df_plot.columns:
+        fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['Low_20'], line=dict(color='red', width=1, dash='dot'), name='Support (20日)'), row=1, col=1)
     
     # RKing Main Chart Overlay REMOVED
     
     # Signals (Custom passed dates)
     if show_signals and signal_dates is not None and not signal_dates.empty:
         # Filter df to find prices for these dates
-        mask = df_sel['date'].isin(signal_dates)
-        sig_points = df_sel[mask]
+        # signal_dates are timestamps usually, need to convert to match x-axis string format
+        # Better approach: Filter df_plot by original date condition if possible, but we only have string dates in df_plot now?
+        # No, we can use the original df_sel to find indices, then use df_plot dates.
+        # Or simpler: Convert signal_dates to string list and filter df_plot.
+        
+        # Convert signal_dates series to string list
+        sig_dates_str = signal_dates.apply(lambda x: x.strftime('%Y-%m-%d')).tolist()
+        mask = df_plot['date'].isin(sig_dates_str)
+        sig_points = df_plot[mask]
+        
         if not sig_points.empty:
-            fig.add_trace(go.Scatter(x=sig_points['date'], y=sig_points['low'] * 0.98, mode='markers', 
-                                     marker=dict(symbol='triangle-up', size=12, color='red'), name='Strategy Signal'), row=1, col=1)
+            # Generate labels for each point if sigs is available
+            labels = []
+            if sigs is not None:
+                for idx, row in sig_points.iterrows():
+                    # sigs should share the same index as the original dataframe
+                    label_parts = []
+                    try:
+                        if idx in sigs.index:
+                            r = sigs.loc[idx]
+                            # Handle duplicate index if any (unlikely for daily data)
+                            if isinstance(r, pd.DataFrame):
+                                r = r.iloc[0]
+                            
+                            for col in sigs.columns:
+                                if col.startswith('Signal_') and r[col]:
+                                    name = col.replace('Signal_', '') # e.g. Fighting
+                                    label_parts.append(name)
+                    except Exception as e:
+                        # Fallback or debug
+                        print(f"Error matching signal: {e}")
+                        pass
+                    
+                    labels.append(",".join(label_parts))
+            else:
+                labels = ["Signal"] * len(sig_points)
+
+            fig.add_trace(go.Scatter(
+                x=sig_points['date'], 
+                y=sig_points['low'] * 0.98, 
+                mode='markers+text', 
+                marker=dict(symbol='triangle-up', size=12, color='red'), 
+                text=labels,
+                textposition="bottom center",
+                name='Strategy Signal'
+            ), row=1, col=1)
 
     # --- Sub Chart ---
     if sub_chart_type == "MACD":
-        fig.add_trace(go.Bar(x=df_sel['date'], y=df_sel['MACD_Hist'], name='MACD Hist', marker_color=df_sel['MACD_Hist'].apply(lambda x: 'red' if x>0 else 'green')), row=2, col=1)
-        fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['DIF'], line=dict(color='black', width=1), name='DIF'), row=2, col=1)
-        fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['DEA'], line=dict(color='blue', width=1), name='DEA'), row=2, col=1)
+        fig.add_trace(go.Bar(x=df_plot['date'], y=df_plot['MACD_Hist'], name='MACD Hist', marker_color=df_plot['MACD_Hist'].apply(lambda x: 'red' if x>0 else 'green')), row=2, col=1)
+        fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['DIF'], line=dict(color='black', width=1), name='DIF'), row=2, col=1)
+        fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['DEA'], line=dict(color='blue', width=1), name='DEA'), row=2, col=1)
     
     elif sub_chart_type == "KDJ":
-        if 'K' in df_sel.columns:
-            fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['K'], name='K'), row=2, col=1)
-            fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['D'], name='D'), row=2, col=1)
-            fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['J'], name='J'), row=2, col=1)
-            fig.add_shape(type="line", x0=df_sel['date'].iloc[0], x1=df_sel['date'].iloc[-1], y0=20, y1=20, line=dict(color="gray", dash="dot"), row=2, col=1)
-            fig.add_shape(type="line", x0=df_sel['date'].iloc[0], x1=df_sel['date'].iloc[-1], y0=80, y1=80, line=dict(color="gray", dash="dot"), row=2, col=1)
+        if 'K' in df_plot.columns:
+            fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['K'], name='K'), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['D'], name='D'), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['J'], name='J'), row=2, col=1)
+            fig.add_shape(type="line", x0=df_plot['date'].iloc[0], x1=df_plot['date'].iloc[-1], y0=20, y1=20, line=dict(color="gray", dash="dot"), row=2, col=1)
+            fig.add_shape(type="line", x0=df_plot['date'].iloc[0], x1=df_plot['date'].iloc[-1], y0=80, y1=80, line=dict(color="gray", dash="dot"), row=2, col=1)
 
     elif sub_chart_type == "WR":
-        if 'WR' in df_sel.columns:
-            fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['WR'], name='Williams %R'), row=2, col=1)
-            fig.add_shape(type="line", x0=df_sel['date'].iloc[0], x1=df_sel['date'].iloc[-1], y0=-20, y1=-20, line=dict(color="gray", dash="dot"), row=2, col=1)
-            fig.add_shape(type="line", x0=df_sel['date'].iloc[0], x1=df_sel['date'].iloc[-1], y0=-80, y1=-80, line=dict(color="gray", dash="dot"), row=2, col=1)
+        if 'WR' in df_plot.columns:
+            fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['WR'], name='Williams %R'), row=2, col=1)
+            fig.add_shape(type="line", x0=df_plot['date'].iloc[0], x1=df_plot['date'].iloc[-1], y0=-20, y1=-20, line=dict(color="gray", dash="dot"), row=2, col=1)
+            fig.add_shape(type="line", x0=df_plot['date'].iloc[0], x1=df_plot['date'].iloc[-1], y0=-80, y1=-80, line=dict(color="gray", dash="dot"), row=2, col=1)
 
     elif sub_chart_type == "CCI":
-        if 'CCI' in df_sel.columns:
-            fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['CCI'], name='CCI'), row=2, col=1)
-            fig.add_shape(type="line", x0=df_sel['date'].iloc[0], x1=df_sel['date'].iloc[-1], y0=100, y1=100, line=dict(color="gray", dash="dot"), row=2, col=1)
-            fig.add_shape(type="line", x0=df_sel['date'].iloc[0], x1=df_sel['date'].iloc[-1], y0=-100, y1=-100, line=dict(color="gray", dash="dot"), row=2, col=1)
+        if 'CCI' in df_plot.columns:
+            fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['CCI'], name='CCI'), row=2, col=1)
+            fig.add_shape(type="line", x0=df_plot['date'].iloc[0], x1=df_plot['date'].iloc[-1], y0=100, y1=100, line=dict(color="gray", dash="dot"), row=2, col=1)
+            fig.add_shape(type="line", x0=df_plot['date'].iloc[0], x1=df_plot['date'].iloc[-1], y0=-100, y1=-100, line=dict(color="gray", dash="dot"), row=2, col=1)
 
     elif sub_chart_type == "Volume":
-        colors = ['red' if r.close > r.open else 'green' for i, r in df_sel.iterrows()]
-        fig.add_trace(go.Bar(x=df_sel['date'], y=df_sel['volume'], marker_color=colors, name='Volume'), row=2, col=1)
-        if 'Vol_MA20' in df_sel.columns:
-             fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['Vol_MA20'], line=dict(color='black', width=1), name='MA20 Vol'), row=2, col=1)
+        colors = ['red' if r.close > r.open else 'green' for i, r in df_plot.iterrows()]
+        fig.add_trace(go.Bar(x=df_plot['date'], y=df_plot['volume'], marker_color=colors, name='Volume'), row=2, col=1)
+        if 'Vol_MA20' in df_plot.columns:
+             fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['Vol_MA20'], line=dict(color='black', width=1), name='MA20 Vol'), row=2, col=1)
     
     elif sub_chart_type == "RKing (趋势)":
         # RKing is a Heikin-Ashi based system with Bands
         # Plot X-Candles
-        if 'XOpen' in df_sel.columns:
+        if 'XOpen' in df_plot.columns:
             # Custom Candles
-            fig.add_trace(go.Candlestick(x=df_sel['date'],
-                            open=df_sel['XOpen'], high=df_sel['XHigh'],
-                            low=df_sel['XLow'], close=df_sel['XClose'],
+            fig.add_trace(go.Candlestick(x=df_plot['date'],
+                            open=df_plot['XOpen'], high=df_plot['XHigh'],
+                            low=df_plot['XLow'], close=df_plot['XClose'],
                             increasing_line_color='red', decreasing_line_color='green',
                             name='RKing HA'), row=2, col=1)
             
             # Bands
-            if 'RKing_Upper' in df_sel.columns:
-                fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['RKing_Upper'], line=dict(color='orange', width=1), name='RKing UP'), row=2, col=1)
-                fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['RKing_Lower'], line=dict(color='cyan', width=1), name='RKing DOWN'), row=2, col=1)
+            if 'RKing_Upper' in df_plot.columns:
+                fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['RKing_Upper'], line=dict(color='orange', width=1), name='RKing UP'), row=2, col=1)
+                fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['RKing_Lower'], line=dict(color='cyan', width=1), name='RKing DOWN'), row=2, col=1)
 
             # Signals
-            bu_mask = df_sel['RKing_BU']
-            sel_mask = df_sel['RKing_SEL']
+            bu_mask = df_plot['RKing_BU']
+            sel_mask = df_plot['RKing_SEL']
             
             # Adjust marker position relative to XLow/XHigh
-            fig.add_trace(go.Scatter(x=df_sel[bu_mask]['date'], y=df_sel[bu_mask]['XLow']*0.98, mode='markers', 
+            fig.add_trace(go.Scatter(x=df_plot[bu_mask]['date'], y=df_plot[bu_mask]['XLow']*0.98, mode='markers', 
                                      marker=dict(symbol='triangle-up', size=10, color='yellow'), name='Buy'), row=2, col=1)
-            fig.add_trace(go.Scatter(x=df_sel[sel_mask]['date'], y=df_sel[sel_mask]['XHigh']*1.02, mode='markers', 
+            fig.add_trace(go.Scatter(x=df_plot[sel_mask]['date'], y=df_plot[sel_mask]['XHigh']*1.02, mode='markers', 
                                      marker=dict(symbol='triangle-down', size=10, color='blue'), name='Sell'), row=2, col=1)
 
     elif sub_chart_type == "RSI":
-        if 'RSI6' in df_sel.columns:
-            fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['RSI6'], name='RSI6'), row=2, col=1)
-        if 'RSI2' in df_sel.columns:
-            fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['RSI2'], name='RSI2'), row=2, col=1)
-        fig.add_shape(type="line", x0=df_sel['date'].iloc[0], x1=df_sel['date'].iloc[-1], y0=80, y1=80, line=dict(color="gray", dash="dot"), row=2, col=1)
-        fig.add_shape(type="line", x0=df_sel['date'].iloc[0], x1=df_sel['date'].iloc[-1], y0=20, y1=20, line=dict(color="gray", dash="dot"), row=2, col=1)
+        if 'RSI6' in df_plot.columns:
+            fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['RSI6'], name='RSI6'), row=2, col=1)
+        if 'RSI2' in df_plot.columns:
+            fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['RSI2'], name='RSI2'), row=2, col=1)
+        fig.add_shape(type="line", x0=df_plot['date'].iloc[0], x1=df_plot['date'].iloc[-1], y0=80, y1=80, line=dict(color="gray", dash="dot"), row=2, col=1)
+        fig.add_shape(type="line", x0=df_plot['date'].iloc[0], x1=df_plot['date'].iloc[-1], y0=20, y1=20, line=dict(color="gray", dash="dot"), row=2, col=1)
         
     elif sub_chart_type == "Volatility":
-        if 'Std20' in df_sel.columns:
-             fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['Std20'], name='Std20'), row=2, col=1)
-             fig.add_trace(go.Scatter(x=df_sel['date'], y=df_sel['Std60'], name='Std60'), row=2, col=1)
-
-    fig.update_layout(height=600, margin=dict(l=0, r=0, t=30, b=0), title=f"{code} - {name} ({df_sel['date'].iloc[-1].strftime('%Y-%m-%d')})")
-    fig.update_xaxes(rangeslider_visible=False)
+        if 'Std20' in df_plot.columns:
+             fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['Std20'], name='Std20'), row=2, col=1)
+             fig.add_trace(go.Scatter(x=df_plot['date'], y=df_plot['Std60'], name='Std60'), row=2, col=1)
+    
+    fig.update_layout(height=600, margin=dict(l=0, r=0, t=30, b=0), 
+                      title=f"{code} - {name} ({df_sel['date'].iloc[-1].strftime('%Y-%m-%d')})",
+                      xaxis_rangeslider_visible=False)
+    
+    # Use category axis to remove non-trading days gaps
+    # We need to ensure X values are strings for this to work best or let Plotly handle it
+    # But simply setting type='category' usually works on the dataframe index or column
+    fig.update_xaxes(type='category', tickmode='auto', nticks=20)
     st.plotly_chart(fig, use_container_width=True)
     
     # Indicator Explanation
