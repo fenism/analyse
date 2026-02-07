@@ -658,7 +658,7 @@ elif app_mode == "策略选股 (Screening)":
         # Use almost all cores
         cpu_count = max(1, multiprocessing.cpu_count() - 1)
         
-        from stock_app.scanner import scan_single_stock
+        from scanner import scan_single_stock
         
         # Progress Bar Logic
         total = len(tasks)

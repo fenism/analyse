@@ -1,10 +1,9 @@
-
 import pandas as pd
 import datetime
 import traceback
-from .data_loader import DataLoader
-from .indicators import Indicators
-from .strategies import Strategies
+from data_loader import DataLoader
+from indicators import Indicators
+from strategies import Strategies
 
 # Initialize Loader once per process if possible, or per call?
 # Loader is lightweight (just paths), so per call is fine or global in worker.
