@@ -308,6 +308,18 @@ else:
     div[data-testid="stMarkdownContainer"] p {
         color: #000000 !important;
     }
+    
+    /* Header (Top Bar) - Force Light */
+    header[data-testid="stHeader"] {
+        background-color: #FFFFFF !important;
+    }
+    header[data-testid="stHeader"] button {
+        background-color: transparent !important;
+        border: none !important;
+    }
+    header[data-testid="stHeader"] svg {
+        fill: #000000 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
     plotly_template = 'plotly_white'
