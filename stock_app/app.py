@@ -399,7 +399,28 @@ with col4:
 
 
 
-def plot_stock_chart(df_sel, code, name, show_ma, show_ema, show_boll, show_cyc, show_ema15, show_box, show_supt, show_signals, sub_chart_type, plotly_template, sigs=None, signal_dates=None):
+
+STRATEGY_DESCRIPTIONS = {
+    "Fighting": "**Fighting (趋势共振)**: MACD翻红+股价新高+量能放大+布林带确认。主升浪信号。",
+    "CYC_MAX": "**CYC MAX (成本突破)**: 股价站上无穷成本均线，市场全获利状态。",
+    "RangeBreak": "**Range Break (箱体突破)**: 突破52周(或250日)最高价，伴随放量。",
+    "20VMA": "**20VMA (量能启动)**: 长期缩量后首次放量突破20日均量线，趋势启动。",
+    "HMC": "**HMC (动量通道)**: MACD柱状图乖离率过大，动量强劲。",
+    "HPS": "**HPS (趋势系统)**: 站上EMA200牛熊线，且突破EMA15通道。",
+    "TKOS": "**TKOS (股王)**: 短期爆发力极强，月涨幅显著。",
+    "RKing": "**RKing (趋势跟随)**: 红柱代表多头趋势，绿柱代表空头趋势。此为趋势中继或启动。",
+    "Limit": "**Limit (极致缩量)**: 成交量低于20日均量的50%，变盘在即。",
+    "Boll_Rev": "**Boll Rev (布林反转)**: 触及布林下轨后反弹。",
+    "RSI2_Rev": "**RSI2 Reversion**: RSI2极度超卖(<10)后的回归买点。",
+    "2B": "**2B 法则**: 创新低后迅速拉回，底部反转。",
+    "Wyckoff": "**Wyckoff (吸筹)**: 成交量与价格底背离，主力吸筹迹象。",
+    "Spring": "**Spring (弹簧)**: 跌破支撑后迅速收回，洗盘结束。",
+    "Pinbar": "**Pinbar (针线)**: 长下影线，底部反转信号。",
+    "ES": "**ES (波动率压缩)**: 波动率降至极致，预示剧烈变盘。",
+    "Low_吸": "**Low_吸 (低吸)**: 综合低吸策略。",
+}
+
+def plot_stock_chart(df_sel, code, name, show_ma, show_ema, show_boll, show_cyc, show_ema15, show_box, show_supt, show_signals, sub_chart_type, plotly_template, sigs=None, signal_dates=None, triggered_strategies=None):
     if df_sel.empty:
         st.warning("No data to plot.")
         return
@@ -533,7 +554,17 @@ def plot_stock_chart(df_sel, code, name, show_ma, show_ema, show_boll, show_cyc,
     
     # Indicator Explanation
     st.markdown("### 📚 指标与战法说明")
-    with st.expander("点击展开查看详细说明", expanded=False):
+    with st.expander("点击展开查看详细说明", expanded=True if triggered_strategies else False):
+        # 1. Triggered Strategies
+        if triggered_strategies:
+            st.markdown("#### 🎯 本次筛选触发策略")
+            for strat in triggered_strategies:
+                 strat_key = strat.strip()
+                 desc = STRATEGY_DESCRIPTIONS.get(strat_key, f"**{strat_key}**: 暂无详细说明")
+                 st.markdown(f"- {desc}")
+            st.divider()
+
+        st.markdown("#### 📉 当前副图指标")
         if sub_chart_type == "MACD":
             st.markdown("""
             **MACD (平滑异同移动平均线)**
@@ -919,8 +950,13 @@ elif app_mode == "策略选股 (Screening)":
                     sub_chart_type = st.radio("副图:", ["MACD", "KDJ", "RSI", "WR", "CCI", "Volume", "RKing (趋势)", "Volatility"], key='sc_sub')
                     
                 with col_c2:
+                    # Parse triggered strategies from result
+                    triggered_strats = []
+                    if 'Strategies' in row_data:
+                         triggered_strats = str(row_data['Strategies']).split(', ')
+
                     # Plot
-                    plot_stock_chart(df_disp_s, code_s, name_s, show_ma, show_ema, show_boll, False, False, False, False, show_signals, sub_chart_type, plotly_template, sigs_s, signal_dates)
+                    plot_stock_chart(df_disp_s, code_s, name_s, show_ma, show_ema, show_boll, False, False, False, False, show_signals, sub_chart_type, plotly_template, sigs_s, signal_dates, triggered_strategies=triggered_strats)
                 
                 # --- Indicator Table (Screening) ---
                 with st.expander("📊 指标数值详情 (Indicator Values)"):
