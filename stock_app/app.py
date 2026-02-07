@@ -216,6 +216,18 @@ if st.session_state['theme'] == 'dark':
     button:hover p {
         color: #ff4b4b !important;
     }
+    
+    /* Header (Top Bar) */
+    header[data-testid="stHeader"] {
+        background-color: #0e1117 !important;
+    }
+    header[data-testid="stHeader"] button {
+        background-color: transparent !important;
+        border: none !important;
+    }
+    header[data-testid="stHeader"] svg {
+        fill: #FFFFFF !important;
+    }
     </style>
     """, unsafe_allow_html=True)
     plotly_template = 'plotly_dark'
