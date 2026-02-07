@@ -12,7 +12,7 @@ import os
 st.set_page_config(layout="wide", page_title="A股全市场选股策略")
 
 # Title and Intro
-st.title("A股全市场选股 (本地离线版)")
+st.title("A股全市场选股")
 st.markdown("""
 基于 **本地数据仓库 (Local Data Warehouse)**，覆盖全市场（剔除ST/科创/北交）。
 **使用前请确保已运行数据下载脚本更新本地数据。**
