@@ -1325,6 +1325,21 @@ elif app_mode == "强势股进攻 (Strong Attack)":
                     st.dataframe(df_disp_s[cols_final].tail(10).sort_values(by='date', ascending=False)
                                .style.format({"close": "{:.2f}", "MA20": "{:.2f}"}), 
                                use_container_width=True)
+                
+                # --- AI Diagnosis (Strong Attack) ---
+                st.subheader("🤖 AI 智能诊断 (Gemini 3 Pro)")
+                if st.button("开始诊断 (Start Diagnosis)", key='diag_strong'):
+                    try:
+                        GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+                    except (FileNotFoundError, KeyError):
+                        st.error("未找到 API Key。请在 .streamlit/secrets.toml 中配置 GEMINI_API_KEY。")
+                        st.stop()
+                    
+                    from stock_diagnosis import StockDiagnoser
+                    diagnoser = StockDiagnoser(GEMINI_API_KEY)
+                    with st.spinner("正在请求 AI 模型进行深度分析..."):
+                        report = diagnoser.generate_report(df_s, code_s, name_s, sigs_s)
+                    st.markdown(report)
     
     elif st.session_state['strong_scan_results'] is None:
         st.info("请点击左侧按钮开始强势股筛选。")
@@ -1650,6 +1665,21 @@ elif app_mode == "弱势股抄底 (Weak Reversal)":
                     st.dataframe(df_disp_s[cols_final].tail(10).sort_values(by='date', ascending=False)
                                .style.format({"close": "{:.2f}", "MA20": "{:.2f}"}), 
                                use_container_width=True)
+                
+                # --- AI Diagnosis (Weak Reversal) ---
+                st.subheader("🤖 AI 智能诊断 (Gemini 3 Pro)")
+                if st.button("开始诊断 (Start Diagnosis)", key='diag_weak'):
+                    try:
+                        GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+                    except (FileNotFoundError, KeyError):
+                        st.error("未找到 API Key。请在 .streamlit/secrets.toml 中配置 GEMINI_API_KEY。")
+                        st.stop()
+                    
+                    from stock_diagnosis import StockDiagnoser
+                    diagnoser = StockDiagnoser(GEMINI_API_KEY)
+                    with st.spinner("正在请求 AI 模型进行深度分析..."):
+                        report = diagnoser.generate_report(df_s, code_s, name_s, sigs_s)
+                    st.markdown(report)
     
     elif st.session_state['weak_scan_results'] is None:
         st.info("请点击左侧按钮开始抄底筛选。")
