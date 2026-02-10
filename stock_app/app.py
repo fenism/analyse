@@ -359,7 +359,9 @@ calc_start_date = default_start - datetime.timedelta(days=400)
 
 # --- Mode Selection ---
 st.sidebar.markdown("---")
-app_mode = st.sidebar.radio("模式选择 (Mode)", ["策略选股 (Screening)", "个股行情 (Analysis)", "强势股进攻 (Strong Attack)"])
+app_mode = st.sidebar.radio("模式选择 (Mode)", 
+    ["策略选股 (Screening)", "个股行情 (Analysis)", 
+     "强势股进攻 (Strong Attack)", "弱势股抄底 (Weak Reversal)"])
 
 # --- Strategy Selection (Sidebar) ---
 # Only show strategy selection in Screening Mode? 
@@ -1326,3 +1328,328 @@ elif app_mode == "强势股进攻 (Strong Attack)":
     
     elif st.session_state['strong_scan_results'] is None:
         st.info("请点击左侧按钮开始强势股筛选。")
+
+elif app_mode == "弱势股抄底 (Weak Reversal)":
+    # --- Weak Stock Reversal Mode ---
+    st.header("🔄 弱势股抄底 / Weak Stock Reversal")
+    st.markdown("""
+    **核心心法**: 行情始于"无"（极致缩量/绝望），终于"有"（放量/贪婪）。
+    
+    抄底不是买在最低点，而是买在**"绝望后的确认转折点"**。
+    
+    - **第一阶段(扫描与初筛)**: 寻找"绝望"与"无" - HLP3, Limit, RSI回归
+    - **第二阶段(形态确认)**: 寻找"诱空"与"试探" - Spring, Pinbar, 资金背离
+    - **第三阶段(买入扳机)**: 确认"有"与"启动" - UA天量, 倍量不破
+    """)
+    
+    # Import weak strategies module
+    from weak_strategies import WeakStrategies
+    
+    # Date Range
+    col_d1, col_d2 = st.columns(2)
+    with col_d1:
+        weak_start = st.date_input("筛选/显示开始日期", default_start, key='weak_start')
+    with col_d2:
+        weak_end = st.date_input("筛选/显示结束日期", default_end, key='weak_end')
+    
+    # Strategy Selection in Sidebar
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("抄底策略配置")
+    
+    with st.sidebar.expander("📖 策略说明", expanded=False):
+        st.markdown("""
+        **第一阶段：扫描与初筛 (寻找"绝望")**
+        - **HLP3**: 获利盘<1%后飙升>35%，主力扫货信号
+        - **Limit**: 成交量<均量50%，极致缩量后放量突破
+        - **RSI回归**: RSI(2)连续2天<25，牛市中超卖反弹
+        
+        **第二阶段：形态确认 (寻找"诱空")**
+        - **Spring**: 跌破支撑后快速拉回，主力清洗浮筹
+        - **Pinbar**: 长下影线>实体*3+放量，探底神针
+        - **资金背离**: 价格创新低但资金净流入，主力吸筹
+        
+        **第三阶段：买入扳机 (确认"启动")**
+        - **UA天量**: 突破底部天量日最高价，多头获胜
+        - **倍量不破**: 倍量阳线后回调不破低点，再次启动
+        
+        ⚠️ **风控提醒**: 抄底是逆势交易，必须严格止损（-10%硬防守）
+        """)
+    
+    st.sidebar.markdown("**第一阶段: 扫描与初筛**")
+    strat_hlp3 = st.sidebar.checkbox("HLP3 (大慈悲点)", value=False, key='ws_hlp3')
+    strat_limit = st.sidebar.checkbox("Limit (极致缩量)", value=True, key='ws_limit')
+    strat_rsi_rev = st.sidebar.checkbox("RSI 均值回归", value=False, key='ws_rsi')
+    
+    st.sidebar.markdown("**第二阶段: 形态确认**")
+    strat_spring = st.sidebar.checkbox("Spring (弹簧)", value=True, key='ws_spring')
+    strat_pinbar = st.sidebar.checkbox("Pinbar (长钉)", value=False, key='ws_pinbar')
+    strat_flow = st.sidebar.checkbox("Money Flow (资金背离)", value=False, key='ws_flow')
+    
+    st.sidebar.markdown("**第三阶段: 买入扳机**")
+    strat_ua_weak = st.sidebar.checkbox("UA (天量突破)", value=False, key='ws_ua')
+    strat_dv = st.sidebar.checkbox("倍量不破", value=False, key='ws_dv')
+    
+    # Session State for Weak Reversal
+    if 'weak_scan_results' not in st.session_state:
+        st.session_state['weak_scan_results'] = None
+    
+    if st.sidebar.button("📉 开始抄底筛选 / Start Reversal Scan"):
+        if stock_list_df.empty:
+            st.error("无法开始：请先下载数据。")
+            st.stop()
+        
+        # Check if at least one strategy is selected
+        selected_strats = []
+        if strat_hlp3: selected_strats.append('HLP3')
+        if strat_limit: selected_strats.append('Limit')
+        if strat_rsi_rev: selected_strats.append('RSI_Rev')
+        if strat_spring: selected_strats.append('Spring')
+        if strat_pinbar: selected_strats.append('Pinbar')
+        if strat_flow: selected_strats.append('Money_Flow')
+        if strat_ua_weak: selected_strats.append('UA')
+        if strat_dv: selected_strats.append('Double_Vol')
+        
+        if not selected_strats:
+            st.warning("请至少选择一个策略!")
+            st.stop()
+        
+        st.info(f"正在扫描 {weak_start} 至 {weak_end} 期间符合抄底策略的股票...")
+        st.write(f"已选策略: {', '.join(selected_strats)}")
+        
+        # Warning about HLP3
+        if 'HLP3' in selected_strats:
+            st.warning("""⚠️ HLP3策略需要筹码分布数据（获利盘比例）。
+            
+系统将使用 akshare 实时获取筹码数据，并自动缓存以提升性能。
+首次获取可能较慢（每只股票约0.5-1秒），后续使用缓存会很快。
+
+💡 建议：如果需要扫描大量股票，考虑先用其他策略初筛，再对结果应用HLP3。""")
+        
+        # Prepare dates
+        load_start_str = (weak_start - datetime.timedelta(days=400)).strftime("%Y-%m-%d")
+        load_end_str = weak_end.strftime("%Y-%m-%d")
+        
+        # Scan stocks
+        stock_codes = stock_list_df['code'].tolist()
+        results = []
+        hlp3_skipped_count = 0
+        
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        for idx, code in enumerate(stock_codes):
+            if idx % 100 == 0 or idx == len(stock_codes) - 1:
+                progress_bar.progress((idx + 1) / len(stock_codes))
+                status_text.text(f"扫描中 {idx + 1}/{len(stock_codes)}...")
+            
+            # Load stock data
+            df = loader.get_k_data(code, load_start_str, load_end_str)
+            if df.empty:
+                continue
+            
+            # Get stock name
+            name = stock_list_df[stock_list_df['code'] == code].iloc[0]['name']
+            
+            # Load chip distribution data if HLP3 is selected
+            if 'HLP3' in selected_strats:
+                from chip_data_loader import ChipDataLoader
+                chip_df = ChipDataLoader.get_chip_data(code, use_cache=True)
+                if not chip_df.empty:
+                    df = ChipDataLoader.merge_with_kline(df, chip_df)
+            
+            # Check strategies
+            try:
+                signals = WeakStrategies.check_all_weak_strategies(
+                    df,
+                    selected_strategies=selected_strats,
+                    winner_col='winner_pct'  # 尝试标准列名
+                )
+                
+                # Check if HLP3 was skipped due to missing data
+                if 'HLP3_Warning' in signals.columns and signals['HLP3_Warning'].any():
+                    hlp3_skipped_count += 1
+                
+                # Merge with df for date filtering
+                df_with_signals = df.copy()
+                for col in signals.columns:
+                    if col.startswith('Signal_'):
+                        df_with_signals[col] = signals[col]
+                
+                # Filter to scan range
+                df_scan = df_with_signals[
+                    (df_with_signals['date'].dt.date >= weak_start) & 
+                    (df_with_signals['date'].dt.date <= weak_end)
+                ]
+                
+                if df_scan.empty:
+                    continue
+                
+                # Check if any signal triggered
+                signal_cols = [f'Signal_{s}' for s in selected_strats]
+                # Filter out columns that don't exist
+                signal_cols = [col for col in signal_cols if col in df_scan.columns]
+                
+                if not signal_cols:
+                    continue
+                
+                # AND logic: all selected strategies must be True
+                combined_signal = df_scan[signal_cols].all(axis=1)
+                
+                if combined_signal.any():
+                    # Find most recent signal date
+                    signal_dates = df_scan[combined_signal]['date']
+                    if not signal_dates.empty:
+                        first_signal_date = signal_dates.iloc[-1]
+                        
+                        # Get latest close price
+                        latest_close = df_scan['close'].iloc[-1]
+                        
+                        results.append({
+                            'Code': code,
+                            'Name': name,
+                            'Signal Date': first_signal_date,
+                            'Close': latest_close,
+                            'Strategies': ', '.join(selected_strats)
+                        })
+            except Exception as e:
+                # Skip stocks with errors
+                continue
+        
+        progress_bar.empty()
+        status_text.empty()
+        
+        # Show HLP3 warning if applicable
+        if hlp3_skipped_count > 0 and 'HLP3' in selected_strats:
+            st.warning(f"⚠️ {hlp3_skipped_count} 只股票缺少获利盘数据，HLP3策略未生效。")
+        
+        if results:
+            res_df = pd.DataFrame(results)
+            res_df['Signal Date'] = pd.to_datetime(res_df['Signal Date'])
+            res_df = res_df.sort_values(by='Signal Date', ascending=False)
+            res_df['Signal Date'] = res_df['Signal Date'].dt.strftime('%Y-%m-%d')
+            
+            st.session_state['weak_scan_results'] = res_df
+            st.success(f"筛选完成！发现 {len(results)} 只符合条件的抄底标的。")
+        else:
+            st.session_state['weak_scan_results'] = pd.DataFrame()
+            st.warning("未找到符合条件的股票。抄底信号较为少见，建议放宽策略组合或扩大时间范围。")
+    
+    # Display Results
+    if st.session_state['weak_scan_results'] is not None and not st.session_state['weak_scan_results'].empty:
+        res_df = st.session_state['weak_scan_results']
+        res_df['Code'] = res_df['Code'].astype(str)
+        
+        st.markdown("### 📊 抄底机会筛选结果 (点击表格行查看详情)")
+        st.markdown("⚠️ **风险提示**: 抄底是逆势交易，务必设置止损，单笔亏损不超过本金10%")
+        
+        event = st.dataframe(
+            res_df,
+            use_container_width=True,
+            on_select="rerun",
+            selection_mode="single-row"
+        )
+        
+        st.divider()
+        
+        # Determine Selected Stock
+        selected_row_index = None
+        if event.selection.rows:
+            selected_row_index = event.selection.rows[0]
+        
+        if selected_row_index is not None:
+            row_data = res_df.iloc[selected_row_index]
+            code_s = str(row_data['Code'])
+            name_s = str(row_data['Name'])
+            st.info(f"当前选中: {code_s} - {name_s}")
+        else:
+            st.info("👆 请在上方表格中点击选择一只股票查看详情。")
+            
+            # Fallback selectbox
+            if 'Signal Date' in res_df.columns:
+                screen_options = [f"{r['Code']} - {r['Name']} (Signal: {r['Signal Date']})" 
+                                for r in res_df.to_dict('records')]
+            else:
+                screen_options = [f"{r['Code']} - {r['Name']}" for r in res_df.to_dict('records')]
+            
+            selected_screen = st.selectbox("或者：从下拉列表选择", options=screen_options, 
+                                          index=None, placeholder="选择股票...")
+            
+            if selected_screen:
+                code_s = selected_screen.split(" - ")[0]
+                name_s = selected_screen.split(" - ")[1].split(" (")[0]
+            else:
+                code_s = None
+        
+        if code_s:
+            # Display Chart
+            load_start_s = (weak_start - datetime.timedelta(days=400)).strftime("%Y-%m-%d")
+            load_end_s = weak_end.strftime("%Y-%m-%d")
+            
+            df_s = loader.get_k_data(code_s, load_start_s, load_end_s)
+            
+            if not df_s.empty:
+                df_s = Indicators.add_all_indicators(df_s)
+                df_disp_s = df_s[(df_s['date'].dt.date >= weak_start) & 
+                                (df_s['date'].dt.date <= weak_end)]
+                
+                # Calculate signals for visualization
+                selected_strats_chart = []
+                if strat_hlp3: selected_strats_chart.append('HLP3')
+                if strat_limit: selected_strats_chart.append('Limit')
+                if strat_rsi_rev: selected_strats_chart.append('RSI_Rev')
+                if strat_spring: selected_strats_chart.append('Spring')
+                if strat_pinbar: selected_strats_chart.append('Pinbar')
+                if strat_flow: selected_strats_chart.append('Money_Flow')
+                if strat_ua_weak: selected_strats_chart.append('UA')
+                if strat_dv: selected_strats_chart.append('Double_Vol')
+                
+                sigs_s = WeakStrategies.check_all_weak_strategies(
+                    df_s,
+                    selected_strategies=selected_strats_chart,
+                    winner_col='winner_pct'
+                )
+                
+                # Find signal dates
+                df_s_with_sigs = df_s.copy()
+                for col in sigs_s.columns:
+                    if col.startswith('Signal_'):
+                        df_s_with_sigs[col] = sigs_s[col]
+                
+                signal_cols = [f'Signal_{s}' for s in selected_strats_chart]
+                signal_cols = [col for col in signal_cols if col in df_s_with_sigs.columns]
+                
+                if signal_cols:
+                    combined_signal = df_s_with_sigs[signal_cols].all(axis=1)
+                    signal_dates = df_s_with_sigs[combined_signal & 
+                        (df_s_with_sigs['date'].dt.date >= weak_start) & 
+                        (df_s_with_sigs['date'].dt.date <= weak_end)]['date']
+                else:
+                    signal_dates = pd.Series(dtype='datetime64[ns]')
+                
+                # Controls
+                col_c1, col_c2 = st.columns([1, 4])
+                with col_c1:
+                    st.subheader("图表配置")
+                    show_ma = st.checkbox("MA20", value=True, key='weak_ma')
+                    show_ema = st.checkbox("EMA200", value=True, key='weak_ema')
+                    show_boll = st.checkbox("Boll", value=True, key='weak_boll')
+                    show_signals = st.checkbox("标注信号", value=True, key='weak_sig')
+                    sub_chart_type = st.radio("副图:", ["MACD", "Volume", "RSI"], key='weak_sub')
+                
+                with col_c2:
+                    triggered_strats = str(row_data['Strategies']).split(', ')
+                    plot_stock_chart(df_disp_s, code_s, name_s, show_ma, show_ema, show_boll, 
+                                   False, False, False, False, show_signals, sub_chart_type, 
+                                   plotly_template, sigs_s, signal_dates, 
+                                   triggered_strategies=triggered_strats)
+                
+                # Indicator Table
+                with st.expander("📊 指标数值详情"):
+                    cols_to_show = ['date', 'close', 'volume', 'MA20', 'MACD_Hist']
+                    cols_final = [c for c in cols_to_show if c in df_disp_s.columns]
+                    st.dataframe(df_disp_s[cols_final].tail(10).sort_values(by='date', ascending=False)
+                               .style.format({"close": "{:.2f}", "MA20": "{:.2f}"}), 
+                               use_container_width=True)
+    
+    elif st.session_state['weak_scan_results'] is None:
+        st.info("请点击左侧按钮开始抄底筛选。")

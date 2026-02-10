@@ -49,39 +49,50 @@ class StrongStrategies:
         核心逻辑：(个股收盘 / 大盘收盘) * 1000，并叠加布林带（N=20, Std=2）
         信号：RS 突破 RS布林上轨
         
-        :param stock_df: 个股 DataFrame (需包含 'close')
-        :param index_df: 大盘指数 DataFrame (需包含 'close')
+        :param stock_df: 个股 DataFrame (需包含 'date', 'close')
+        :param index_df: 大盘指数 DataFrame (需包含 'date', 'close')
         :param period: 布林带周期，默认20
         :param num_std: 布林带标准差倍数，默认2
         :return: 包含 RS 及其布林带信号的 DataFrame
         """
-        # 确保索引对齐
-        data = pd.DataFrame(index=stock_df.index)
-        data['Stock_Close'] = stock_df['close']
+        stock_df = stock_df.copy()
         
-        # 对齐大盘数据到股票的日期索引
-        # 假设 index_df 也有 'date' 或索引是日期
-        if 'date' in index_df.columns:
-            index_df = index_df.set_index('date')
+        # 确保两个df都有date列
+        if 'date' not in stock_df.columns or 'date' not in index_df.columns:
+            # 如果没有date列，返回空信号
+            stock_df['RS_Breakout'] = False
+            return stock_df
         
-        # Reindex to match stock dates
-        data['Index_Close'] = index_df['close'].reindex(stock_df.index, method='ffill')
+        # 按日期合并股票和大盘数据
+        merged = pd.merge(
+            stock_df[['date', 'close']],
+            index_df[['date', 'close']],
+            on='date',
+            how='left',
+            suffixes=('_stock', '_index')
+        )
+        
+        # 前向填充大盘数据（处理缺失日期）
+        merged['close_index'] = merged['close_index'].fillna(method='ffill')
         
         # 1. 计算 RS 值 (乘以1000方便显示)
-        data['RS'] = (data['Stock_Close'] / data['Index_Close']) * 1000
+        merged['RS'] = (merged['close_stock'] / merged['close_index']) * 1000
         
         # 2. 计算 RS 的布林带
-        data['RS_MA'] = data['RS'].rolling(window=period).mean()
-        data['RS_STD'] = data['RS'].rolling(window=period).std()
-        data['RS_Upper'] = data['RS_MA'] + (data['RS_STD'] * num_std)
-        data['RS_Lower'] = data['RS_MA'] - (data['RS_STD'] * num_std)
+        merged['RS_MA'] = merged['RS'].rolling(window=period).mean()
+        merged['RS_STD'] = merged['RS'].rolling(window=period).std()
+        merged['RS_Upper'] = merged['RS_MA'] + (merged['RS_STD'] * num_std)
+        merged['RS_Lower'] = merged['RS_MA'] - (merged['RS_STD'] * num_std)
         
         # 3. 信号：RS 突破 RS布林上轨
-        # 使用 shift(1) 避免未来函数，判断穿越
-        data['RS_Breakout'] = (data['RS'] > data['RS_Upper']) & \
-                              (data['RS'].shift(1) <= data['RS_Upper'].shift(1))
+        # 当日RS > 上轨 且 前一日RS <= 前一日上轨（避免未来函数）
+        merged['RS_Breakout'] = (merged['RS'] > merged['RS_Upper']) & \
+                                (merged['RS'].shift(1) <= merged['RS_Upper'].shift(1))
         
-        return data
+        # 将结果合并回原始df
+        stock_df['RS_Breakout'] = merged['RS_Breakout'].values
+        
+        return stock_df
     
     @staticmethod
     def calculate_tkos(df):
