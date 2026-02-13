@@ -6,3 +6,4 @@ akshare
 ta-lib
 adata
 notebooklm-py
+pyarrow>=15.0.0

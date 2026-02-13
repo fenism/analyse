@@ -1,9 +1,10 @@
-
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from data_loader import DataLoader
+from signal_cache import SignalCacheBuilder, SignalCacheReader
 from indicators import Indicators
 from strategies import Strategies
 import datetime
@@ -49,6 +50,41 @@ with st.sidebar.expander("📊 数据状态 (Data Status)", expanded=True):
         
     if st.button("🔄 刷新下载进度"):
         st.rerun()
+    
+    st.markdown("---")
+    
+    # --- Cache Status Section ---
+    st.markdown("**📦 信号缓存状态**")
+    cache_reader = SignalCacheReader()
+    is_valid, cache_msg = cache_reader.is_cache_valid()
+    
+    if is_valid:
+        st.success(f"✅ {cache_msg}")
+    else:
+        st.warning(f"⚠️ {cache_msg}")
+    
+    if st.button("🔄 重建信号缓存", help="预计算所有策略信号，加速筛选"):
+        cache_builder = SignalCacheBuilder()
+        
+        status_container = st.status("正在构建信号缓存...", expanded=True)
+        progress_bar = status_container.progress(0)
+        progress_text = status_container.empty()
+        
+        def progress_callback(current, total, message):
+            progress = current / total
+            progress_bar.progress(progress)
+            progress_text.write(f"{message} ({current}/{total})")
+        
+        with st.spinner("预计需要 10-15 分钟，请耐心等待..."):
+            success = cache_builder.build_all_signals(progress_callback=progress_callback)
+        
+        if success:
+            status_container.update(label="缓存构建完成！", state="complete", expanded=False)
+            st.success("🎉 信号缓存已更新，筛选速度将大幅提升！")
+            st.rerun()
+        else:
+            status_container.update(label="缓存构建失败", state="error",expanded=False)
+            st.error("❌ 缓存构建失败，请查看日志")
         
     st.markdown("---")
     if st.button("📥 立即下载行情数据 (Download)", help="从腾讯财经下载日线数据到本地"):
@@ -137,7 +173,27 @@ with st.sidebar.expander("📊 数据状态 (Data Status)", expanded=True):
                     progress_bar.progress(done_count / total_d)
                     
         status_container.update(label="下载完成!", state="complete", expanded=False)
-        st.success(f"下载任务结束。请刷新页面查看数据状态。")
+        st.success(f"下载任务结束。正在自动构建信号缓存...")
+        
+        # Auto-trigger cache rebuild after download
+        cache_builder = SignalCacheBuilder()
+        cache_status = st.status("正在构建信号缓存...", expanded=True)
+        cache_progress = cache_status.progress(0)
+        cache_text = cache_status.empty()
+        
+        def cache_progress_callback(current, total, message):
+            cache_progress.progress(current / total)
+            cache_text.write(f"{message} ({current}/{total})")
+        
+        cache_success = cache_builder.build_all_signals(progress_callback=cache_progress_callback)
+        
+        if cache_success:
+            cache_status.update(label="缓存构建完成！", state="complete", expanded=False)
+            st.success("🎉 数据下载和缓存构建全部完成！")
+        else:
+            cache_status.update(label="缓存构建部分完成", state="running", expanded=False)
+            st.warning("数据已下载，但缓存构建遇到一些问题，部分功能可能较慢")
+        
         st.rerun()
 
 # --- Theme Toggle ---
